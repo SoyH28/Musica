@@ -1,11 +1,38 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
 
 // Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
 // Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Music from '../components/Music.astro';
+import Layout from '../layouts/Layout.astro';
+import axios from "axios"
+const songList = [
+
+ "Perfect",
+ "Shape of You",
+ "Thinking Out Loud",
+ "Photograph",
+ "Happier",
+
+]
+
+const listaDelServidor = await axios.get("https://api.institutoalfa.org/api/songs")
 ---
 
 <Layout>
-	<Welcome />
+	<div> 
+	{ listaDelServidor.data.songs.map (function(valor:any){ 
+		return( 
+			<Music titulo = {valor.title} artista={valor.author.name} imagen={valor.album.image.url} />
+
+	)})
+	 }
+	</div>
 </Layout>
+
+<style>
+
+</style>
+
+<script>
+
+</script>

@@ -1,0 +1,13 @@
+---
+
+const titulo = Astro.props.titulo
+const artista = Astro.props.artista
+const image = Astro.props.imagen
+---
+<div class="flex p-3">
+    <img src={image} alt="">
+    <div>
+        <p class="font-semibold">{titulo}</p>
+        <p class="opacity-50"> {artista}</p>
+    </div>
+</div>
