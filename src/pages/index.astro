@@ -1,38 +1,158 @@
 ---
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
-import Music from '../components/Music.astro';
 import Layout from '../layouts/Layout.astro';
-import axios from "axios"
-const songList = [
+import Music from '../components/Music.astro';
+import axios from "axios";
 
- "Perfect",
- "Shape of You",
- "Thinking Out Loud",
- "Photograph",
- "Happier",
+const URL_ICONO_PLAY = "https://img.freepik.com/vector-premium/plantilla-diseno-vectorial-icono-juego-simple-moderna_1146812-2327.jpg?semt=ais_hybrid&w=740&q=80";
+const URL_ICONO_PAUSA = "https://img.freepik.com/vector-premium/icon-boton-pausa-boton-reproduccion-diseno-simbolo-ilustracion-vectorial_1240970-22281.jpg?semt=ais_hybrid&w=740&q=80";
+const URL_ICONO_NEXT = "https://cdn-icons-png.flaticon.com/512/25/25650.png";
+const URL_WAVES = "https://www.shutterstock.com/image-vector/sound-wave-icon-vector-illustration-260nw-2141384719.jpg";
 
-]
-
-const listaDelServidor = await axios.get("https://api.institutoalfa.org/api/songs")
+let songsData = [];
+try {
+  const response = await axios.get("https://api.institutoalfa.org/api/songs");
+  songsData = response.data.songs;
+} catch (error) {
+  console.error("Error:", error);
+}
 ---
 
-<Layout>
-	<div> 
-	{ listaDelServidor.data.songs.map (function(valor:any){ 
-		return( 
-			<Music titulo = {valor.title} artista={valor.author.name} imagen={valor.album.image.url} />
+<Layout title="Reproductor Astro">
+  <main class="container">
+    <div class="music-grid"> 
+      {songsData.map((song: any, index: number) => ( 
+        <button class="song-card" data-index={index}>
+          <Music titulo={song.title} artista={song.author.name} imagen={song.album.image.url} />
+        </button>
+      ))}
+    </div>
+  </main>
 
-	)})
-	 }
-	</div>
+  <div id="player-bar" class="player-bar hidden">
+    <div class="progress-container">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+
+    <div class="bar-content">
+      <div class="current-info">
+        <div class="title-row">
+            <p id="bar-title">Título</p>
+            <img id="sound-waves" src={URL_WAVES} alt="Playing" class="waves-icon" />
+        </div>
+        <p id="bar-artist">Artista</p>
+      </div>
+
+      <div class="controls-group">
+        <button id="prev-btn" class="nav-btn prev">
+          <img src={URL_ICONO_NEXT} alt="Anterior" />
+        </button>
+
+        <button id="global-play-btn" class="play-circle">
+          <img id="global-icon" src={URL_ICONO_PLAY} alt="Play" />
+        </button>
+        
+        <button id="next-btn" class="nav-btn">
+          <img src={URL_ICONO_NEXT} alt="Siguiente" />
+        </button>
+      </div>
+
+      <div class="spacer">
+        <span id="current-time">0:00</span>
+      </div>
+    </div>
+  </div>
 </Layout>
 
-<style>
+<script define:vars={{ songsData, URL_ICONO_PLAY, URL_ICONO_PAUSA }}>
+  const audio = new Audio();
+  let currentIndex = 0;
 
-</style>
+  const playerBar = document.getElementById('player-bar');
+  const progressBar = document.getElementById('progress-bar');
+  const currentTimeTxt = document.getElementById('current-time');
+  const globalIcon = document.getElementById('global-icon');
+  const globalBtn = document.getElementById('global-play-btn');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const wavesIcon = document.getElementById('sound-waves');
+  const cards = document.querySelectorAll('.song-card');
 
-<script>
+  audio.ontimeupdate = () => {
+    if (audio.duration) {
+        const percentage = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = `${percentage}%`;
+        const mins = Math.floor(audio.currentTime / 60);
+        const secs = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
+        currentTimeTxt.textContent = `${mins}:${secs}`;
+    }
+  };
 
+  function updateUI(isPlaying, song = null) {
+    if (song) {
+      document.getElementById('bar-title').textContent = song.title;
+      document.getElementById('bar-artist').textContent = song.author.name;
+    }
+    globalIcon.src = isPlaying ? URL_ICONO_PAUSA : URL_ICONO_PLAY;
+    wavesIcon.style.display = isPlaying ? "block" : "none";
+  }
+
+  function playSong(index) {
+    if (index >= songsData.length) index = 0;
+    if (index < 0) index = songsData.length - 1;
+    currentIndex = index;
+    const song = songsData[currentIndex];
+    audio.src = song.audio.url;
+    audio.play();
+    playerBar.classList.remove('hidden');
+    updateUI(true, song);
+  }
+
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      playSong(parseInt(card.getAttribute('data-index')));
+    });
+  });
+
+  globalBtn?.addEventListener('click', () => {
+    if (audio.paused) { audio.play(); updateUI(true); }
+    else { audio.pause(); updateUI(false); }
+  });
+
+  nextBtn?.addEventListener('click', () => playSong(currentIndex + 1));
+  prevBtn?.addEventListener('click', () => {
+    if (audio.currentTime > 3) audio.currentTime = 0;
+    else playSong(currentIndex - 1);
+  });
+
+  audio.onended = () => playSong(currentIndex + 1);
 </script>
+
+<style>
+  .container { padding: 2rem; padding-bottom: 140px; max-width: 1200px; margin: 0 auto; }
+  .music-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 25px; }
+  .song-card { background: none; border: none; cursor: pointer; text-align: left; color: white; transition: 0.2s; }
+  .song-card:hover { transform: scale(1.05); }
+
+  .player-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 95px; background: #121212; border-top: 1px solid #282828; z-index: 1000; transition: transform 0.4s ease-out; }
+  .player-bar.hidden { transform: translateY(100%); }
+
+  .progress-container { width: 100%; height: 4px; background: #333; position: absolute; top: 0; }
+  .progress-bar { height: 100%; width: 0%; background: #1db954; transition: width 0.1s linear; }
+
+  .bar-content { display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 30px; }
+  .current-info { width: 30%; color: white; }
+  .title-row { display: flex; align-items: center; gap: 10px; }
+  #bar-title { font-weight: bold; margin: 0; font-size: 0.9rem; }
+  #bar-artist { color: #b3b3b3; font-size: 0.8rem; margin: 0; }
+
+  .controls-group { display: flex; align-items: center; gap: 20px; width: 40%; justify-content: center; }
+  .play-circle { width: 45px; height: 45px; border-radius: 50%; border: none; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .play-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+  .nav-btn { background: none; border: none; cursor: pointer; width: 30px; height: 30px; padding: 0; }
+  .nav-btn img { width: 100%; height: 100%; filter: invert(1); }
+  .nav-btn.prev img { transform: scaleX(-1); }
+
+  .waves-icon { width: 25px; filter: invert(1); display: none; }
+  .spacer { width: 30%; color: #b3b3b3; font-size: 0.8rem; text-align: right; }
+</style>
